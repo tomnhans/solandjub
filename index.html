@@ -153,6 +153,9 @@
         <button class="ghost" type="button" id="toggleSettingsButton">공유 설정</button>
       </div>
       <div class="settings" id="shareSettings">
+        <label class="field">내 닉네임<input id="meName" maxlength="16" placeholder="예: 솔" /></label>
+        <label class="field">동행인 닉네임<input id="companionName" maxlength="16" placeholder="예: 주브" /></label>
+        <button class="secondary" type="button" id="saveNamesButton">닉네임 저장</button>
         <label class="field">Supabase URL<input id="supabaseUrl" placeholder="https://xxxx.supabase.co" /></label>
         <label class="field">Supabase anon key<input id="supabaseKey" placeholder="ey..." /></label>
         <button class="primary" type="button" id="saveSupabaseButton">설정 저장 후 동기화</button>
@@ -263,8 +266,8 @@ for delete using (true);</div>
           <div class="segmented split" id="splitButtons"></div>
         </fieldset>
         <div class="field" id="customShares">
-          <label>나의 부담금<input id="myShare" type="number" inputmode="numeric" min="0" step="1" /></label>
-          <label>동행인의 부담금<input id="companionShare" type="number" inputmode="numeric" min="0" step="1" /></label>
+          <label><span id="myShareLabel">나의 부담금</span><input id="myShare" type="number" inputmode="numeric" min="0" step="1" /></label>
+          <label><span id="companionShareLabel">동행인의 부담금</span><input id="companionShare" type="number" inputmode="numeric" min="0" step="1" /></label>
         </div>
         <label class="field full">메모<textarea id="memo" placeholder="선택 입력"></textarea></label>
         <div class="share-preview full" id="sharePreview"></div>
@@ -275,9 +278,8 @@ for delete using (true);</div>
   </div>
 
   <script>
-    const PARTICIPANTS = { me: "나", companion: "동행인" };
+    const DEFAULT_PARTICIPANTS = { me: "나", companion: "동행인" };
     const CATEGORIES = { food: "식비", cafe: "카페/간식", transport: "교통", accommodation: "숙소", tour: "관광/입장료", shopping: "쇼핑", etc: "기타" };
-    const SPLITS = { half: "반반", me: "내가 전액 부담", companion: "동행인이 전액 부담", custom: "직접 입력" };
     // TODO: Add participant management
     const SETTINGS_KEY = "solandjub:supabase";
     const params = new URLSearchParams(location.search);
@@ -290,9 +292,11 @@ for delete using (true);</div>
     let supabase = null;
     let channel = null;
     let isRemoteReady = false;
+    let participantNames = { ...DEFAULT_PARTICIPANTS };
 
     const $ = (id) => document.getElementById(id);
     const storageKey = () => `solandjub:v2:${tripId || "local"}`;
+    const namesKey = () => `solandjub:names:${tripId || "local"}`;
     const won = (value) => `${new Intl.NumberFormat("ko-KR").format(Math.round(value || 0))}원`;
     const today = () => {
       const d = new Date();
@@ -307,6 +311,75 @@ for delete using (true);</div>
     function getSettings() {
       try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); }
       catch { return {}; }
+    }
+
+    function cleanName(value, fallback) {
+      const name = String(value || "").trim().slice(0, 16);
+      return name || fallback;
+    }
+
+    function loadParticipantNames() {
+      const urlNames = {
+        me: params.get("meName") || params.get("me"),
+        companion: params.get("companionName") || params.get("companion")
+      };
+      try {
+        participantNames = { ...DEFAULT_PARTICIPANTS, ...JSON.parse(localStorage.getItem(namesKey()) || "{}") };
+      } catch {
+        participantNames = { ...DEFAULT_PARTICIPANTS };
+      }
+      if (urlNames.me || urlNames.companion) {
+        participantNames = {
+          me: cleanName(urlNames.me, participantNames.me),
+          companion: cleanName(urlNames.companion, participantNames.companion)
+        };
+        saveParticipantNames();
+      }
+      syncNameInputs();
+    }
+
+    function saveParticipantNames() {
+      participantNames = {
+        me: cleanName($("meName")?.value || participantNames.me, DEFAULT_PARTICIPANTS.me),
+        companion: cleanName($("companionName")?.value || participantNames.companion, DEFAULT_PARTICIPANTS.companion)
+      };
+      localStorage.setItem(namesKey(), JSON.stringify(participantNames));
+      syncNameInputs();
+    }
+
+    function syncNameInputs() {
+      if ($("meName")) $("meName").value = participantNames.me;
+      if ($("companionName")) $("companionName").value = participantNames.companion;
+      if ($("myShareLabel")) $("myShareLabel").textContent = `${participantName("me")} 부담금`;
+      if ($("companionShareLabel")) $("companionShareLabel").textContent = `${participantName("companion")} 부담금`;
+    }
+
+    function participantName(participant) {
+      return participantNames[participant] || DEFAULT_PARTICIPANTS[participant];
+    }
+
+    function participantEntries() {
+      return Object.keys(DEFAULT_PARTICIPANTS).map((key) => [key, participantName(key)]);
+    }
+
+    function hasFinalConsonant(name) {
+      const last = [...String(name).trim()].pop();
+      if (!last) return false;
+      const code = last.charCodeAt(0) - 0xac00;
+      return code >= 0 && code <= 11171 && code % 28 !== 0;
+    }
+
+    function subjectName(participant) {
+      const name = participantName(participant);
+      if (participant === "me" && name === DEFAULT_PARTICIPANTS.me) return "내가";
+      return `${name}${hasFinalConsonant(name) ? "이" : "가"}`;
+    }
+
+    function splitLabel(splitType) {
+      if (splitType === "me") return `${subjectName("me")} 전액 부담`;
+      if (splitType === "companion") return `${subjectName("companion")} 전액 부담`;
+      if (splitType === "custom") return "직접 입력";
+      return "반반";
     }
 
     function setStatus(text, tone = "local") {
@@ -452,14 +525,14 @@ for delete using (true);</div>
 
     function renderSummary() {
       const s = calculateSummary();
-      const metrics = [["총 지출액", s.total], ["내가 결제", s.myPaid], ["동행인 결제", s.companionPaid], ["내 실제 부담", s.myShare], ["동행인 실제 부담", s.companionShare]];
+      const metrics = [["총 지출액", s.total], [`${subjectName("me")} 결제`, s.myPaid], [`${participantName("companion")} 결제`, s.companionPaid], [`${participantName("me")} 실제 부담`, s.myShare], [`${participantName("companion")} 실제 부담`, s.companionShare]];
       $("metrics").innerHTML = metrics.map(([label, value]) => `<div class="metric"><span>${label}</span><strong>${won(value)}</strong></div>`).join("");
       const myBalance = s.myPaid - s.myShare;
       const amount = Math.abs(Math.round(myBalance));
       let message = "정산할 금액이 없습니다";
       let payClass = "";
-      if (amount > 0 && myBalance > 0) { message = `동행인이 나에게 ${won(amount)}을 보내면 정산 완료`; payClass = "pay"; }
-      if (amount > 0 && myBalance < 0) { message = `내가 동행인에게 ${won(amount)}을 보내면 정산 완료`; payClass = "pay"; }
+      if (amount > 0 && myBalance > 0) { message = `${subjectName("companion")} ${participantName("me")}에게 ${won(amount)}을 보내면 정산 완료`; payClass = "pay"; }
+      if (amount > 0 && myBalance < 0) { message = `${subjectName("me")} ${participantName("companion")}에게 ${won(amount)}을 보내면 정산 완료`; payClass = "pay"; }
       $("settlementResult").className = `result ${payClass}`;
       $("settlementResult").innerHTML = `<div><span class="subtitle">최종 정산 결과</span><strong>${message}</strong></div>`;
     }
@@ -473,7 +546,7 @@ for delete using (true);</div>
       if (type === "all") { value.innerHTML = `<option value="">전체</option>`; return; }
       if (type === "date") [...new Set(expenses.map((item) => item.date))].sort((a, b) => b.localeCompare(a)).forEach((date) => value.add(new Option(displayDate(date), date)));
       if (type === "category") Object.entries(CATEGORIES).forEach(([key, label]) => value.add(new Option(label, key)));
-      if (type === "payer") Object.entries(PARTICIPANTS).forEach(([key, label]) => value.add(new Option(label, key)));
+      if (type === "payer") participantEntries().forEach(([key, label]) => value.add(new Option(label, key)));
       if ([...value.options].some((option) => option.value === previous)) value.value = previous;
     }
 
@@ -511,12 +584,12 @@ for delete using (true);</div>
             </div>
           </div>
           <div class="amount-grid">
-            <div><span>결제자</span><strong>${PARTICIPANTS[item.payer]}</strong></div>
+            <div><span>결제자</span><strong>${participantName(item.payer)}</strong></div>
             <div><span>총액</span><strong>${won(item.amount)}</strong></div>
-            <div><span>내 부담</span><strong style="color:var(--teal)">${won(item.myShare)}</strong></div>
-            <div><span>동행인 부담</span><strong style="color:var(--coral)">${won(item.companionShare)}</strong></div>
+            <div><span>${participantName("me")} 부담</span><strong style="color:var(--teal)">${won(item.myShare)}</strong></div>
+            <div><span>${participantName("companion")} 부담</span><strong style="color:var(--coral)">${won(item.companionShare)}</strong></div>
           </div>
-          <div class="memo">분담: ${SPLITS[item.splitType]}${item.memo ? ` · 메모: ${escapeHtml(item.memo)}` : ""}</div>
+          <div class="memo">분담: ${splitLabel(item.splitType)}${item.memo ? ` · 메모: ${escapeHtml(item.memo)}` : ""}</div>
         </article>`).join("");
     }
 
@@ -533,8 +606,8 @@ for delete using (true);</div>
 
     function setupStaticControls() {
       $("category").innerHTML = Object.entries(CATEGORIES).map(([key, label]) => `<option value="${key}">${label}</option>`).join("");
-      $("payerButtons").innerHTML = Object.entries(PARTICIPANTS).map(([key, label]) => `<button type="button" data-payer="${key}">${label}</button>`).join("");
-      $("splitButtons").innerHTML = Object.entries(SPLITS).map(([key, label]) => `<button type="button" data-split="${key}">${label}</button>`).join("");
+      $("payerButtons").innerHTML = participantEntries().map(([key, label]) => `<button type="button" data-payer="${key}">${label}</button>`).join("");
+      $("splitButtons").innerHTML = ["half", "me", "companion", "custom"].map((key) => `<button type="button" data-split="${key}">${splitLabel(key)}</button>`).join("");
     }
 
     function setButtons() {
@@ -546,7 +619,7 @@ for delete using (true);</div>
 
     function updatePreview() {
       const shares = calculateShares($("amount").value, formState.splitType, $("myShare").value, $("companionShare").value);
-      $("sharePreview").innerHTML = `<div><span>나의 부담</span><strong style="color:var(--teal)">${won(shares.myShare)}</strong></div><div><span>동행인의 부담</span><strong style="color:var(--coral)">${won(shares.companionShare)}</strong></div>`;
+      $("sharePreview").innerHTML = `<div><span>${participantName("me")} 부담</span><strong style="color:var(--teal)">${won(shares.myShare)}</strong></div><div><span>${participantName("companion")} 부담</span><strong style="color:var(--coral)">${won(shares.companionShare)}</strong></div>`;
       if (formState.splitType !== "custom") {
         $("myShare").value = shares.myShare || "";
         $("companionShare").value = shares.companionShare || "";
@@ -620,10 +693,13 @@ for delete using (true);</div>
     }
 
     async function newSharedTrip() {
+      const currentNames = { ...participantNames };
       tripId = makeTripId();
       localStorage.setItem("solandjub:lastTrip", tripId);
       history.replaceState(null, "", `${location.pathname}?trip=${encodeURIComponent(tripId)}`);
       expenses = [];
+      participantNames = currentNames;
+      saveParticipantNames();
       saveLocal();
       renderAll();
       await initRemote();
@@ -631,8 +707,14 @@ for delete using (true);</div>
     }
 
     async function copyInvite() {
-      if (!tripId) tripId = makeTripId();
-      const url = `${location.origin}${location.pathname}?trip=${encodeURIComponent(tripId)}`;
+      if (!tripId) {
+        tripId = makeTripId();
+        localStorage.setItem("solandjub:lastTrip", tripId);
+        history.replaceState(null, "", `${location.pathname}?trip=${encodeURIComponent(tripId)}`);
+        saveParticipantNames();
+        renderAll();
+      }
+      const url = `${location.origin}${location.pathname}?trip=${encodeURIComponent(tripId)}&meName=${encodeURIComponent(participantName("me"))}&companionName=${encodeURIComponent(participantName("companion"))}`;
       try {
         await navigator.clipboard.writeText(url);
         $("dataMessage").textContent = "초대 링크를 복사했습니다.";
@@ -649,6 +731,13 @@ for delete using (true);</div>
       if (target.id === "toggleSettingsButton") $("shareSettings").classList.toggle("open");
       if (target.id === "newTripButton") await newSharedTrip();
       if (target.id === "copyInviteButton") await copyInvite();
+      if (target.id === "saveNamesButton") {
+        saveParticipantNames();
+        setupStaticControls();
+        setButtons();
+        renderAll();
+        $("dataMessage").textContent = "닉네임을 저장했습니다.";
+      }
       if (target.id === "saveSupabaseButton") {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify({ url: $("supabaseUrl").value.trim(), key: $("supabaseKey").value.trim() }));
         await initRemote();
@@ -703,8 +792,9 @@ for delete using (true);</div>
       $("dataMessage").textContent = "전체 데이터를 초기화했습니다.";
     });
 
-    setupStaticControls();
+    loadParticipantNames();
     loadLocal();
+    setupStaticControls();
     setButtons();
     renderAll();
     initRemote();
