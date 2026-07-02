@@ -18,6 +18,12 @@
 https://사용자이름.github.io/solandjub/
 ```
 
+## 두 사람 공동 입력
+
+앱의 `공유 설정`에 Supabase URL과 anon key를 저장하면 `공유 여행 만들기`로 초대 링크를 만들 수 있습니다.
+
+자세한 설정은 `SUPABASE_SETUP.md`를 참고하세요.
+
 ## 로컬 실행
 
 로컬에서 확인할 때만 사용합니다.
