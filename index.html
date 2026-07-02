@@ -309,6 +309,13 @@ for delete using (true);</div>
     const sortNewest = (items) => [...items].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
 
     function getSettings() {
+      const urlFromInvite = params.get("supabaseUrl") || params.get("sbUrl");
+      const keyFromInvite = params.get("supabaseKey") || params.get("sbKey");
+      if (urlFromInvite && keyFromInvite) {
+        const invitedSettings = { url: urlFromInvite.trim(), key: keyFromInvite.trim() };
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(invitedSettings));
+        return invitedSettings;
+      }
       try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); }
       catch { return {}; }
     }
@@ -714,10 +721,14 @@ for delete using (true);</div>
         saveParticipantNames();
         renderAll();
       }
-      const url = `${location.origin}${location.pathname}?trip=${encodeURIComponent(tripId)}&meName=${encodeURIComponent(participantName("me"))}&companionName=${encodeURIComponent(participantName("companion"))}`;
+      const settings = getSettings();
+      const sharedSettings = settings.url && settings.key && !settings.key.startsWith("sb_secret_")
+        ? `&supabaseUrl=${encodeURIComponent(settings.url)}&supabaseKey=${encodeURIComponent(settings.key)}`
+        : "";
+      const url = `${location.origin}${location.pathname}?trip=${encodeURIComponent(tripId)}&meName=${encodeURIComponent(participantName("me"))}&companionName=${encodeURIComponent(participantName("companion"))}${sharedSettings}`;
       try {
         await navigator.clipboard.writeText(url);
-        $("dataMessage").textContent = "초대 링크를 복사했습니다.";
+        $("dataMessage").textContent = sharedSettings ? "초대 링크를 복사했습니다." : "초대 링크를 복사했습니다. Supabase 설정은 링크에 포함되지 않았습니다.";
       } catch {
         prompt("초대 링크를 복사해 주세요.", url);
       }
@@ -739,7 +750,13 @@ for delete using (true);</div>
         $("dataMessage").textContent = "닉네임을 저장했습니다.";
       }
       if (target.id === "saveSupabaseButton") {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify({ url: $("supabaseUrl").value.trim(), key: $("supabaseKey").value.trim() }));
+        const key = $("supabaseKey").value.trim();
+        if (key.startsWith("sb_secret_")) {
+          $("shareHint").textContent = "secret key는 브라우저와 초대 링크에 저장할 수 없습니다. publishable 또는 anon public key를 입력해 주세요.";
+          setStatus("키 확인 필요", "local");
+          return;
+        }
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify({ url: $("supabaseUrl").value.trim(), key }));
         await initRemote();
       }
       if (target.dataset.payer) { formState.payer = target.dataset.payer; setButtons(); }
