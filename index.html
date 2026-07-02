@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>solandjub</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f8fafc;
+      --paper: rgba(255, 255, 255, 0.92);
+      --paper-solid: #ffffff;
+      --ink: #172033;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --coral: #f9735b;
+      --teal: #0f9f8f;
+      --blue: #dbeafe;
+      --danger: #dc2626;
+      --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --bg: #0f172a;
+        --paper: rgba(15, 23, 42, 0.86);
+        --paper-solid: #111827;
+        --ink: #f8fafc;
+        --muted: #cbd5e1;
+        --line: #334155;
+        --blue: #172554;
+        --shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, rgba(255, 237, 213, 0.72), rgba(219, 234, 254, 0.62) 48%, var(--bg));
+      color: var(--ink);
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: linear-gradient(180deg, #1e293b, #111827 58%, #0f172a); }
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app { max-width: 1040px; margin: 0 auto; padding: 20px 16px 112px; }
+    .header { display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; }
+    .badge { display: inline-flex; width: fit-content; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,.7); background: rgba(255,255,255,.75); color: var(--teal); border-radius: 8px; padding: 8px 12px; font-size: 14px; font-weight: 700; }
+    h1 { margin: 0; font-size: 34px; line-height: 1.05; letter-spacing: 0; }
+    .subtitle { margin: 8px 0 0; color: var(--muted); }
+    .card { border: 1px solid rgba(255,255,255,.72); background: var(--paper); border-radius: 8px; box-shadow: var(--shadow); backdrop-filter: blur(12px); }
+    .summary { padding: 20px; margin-bottom: 16px; }
+    .summary-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .mark { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 8px; background: var(--coral); color: white; font-weight: 900; }
+    .summary h2, .section-title { margin: 0; font-size: 18px; }
+    .summary p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+    .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .metric { padding: 12px 10px 12px 0; }
+    .metric span { display: block; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .metric strong { display: block; margin-top: 4px; font-size: 16px; }
+    .result { display: flex; gap: 10px; border-top: 1px solid var(--line); margin-top: 16px; padding-top: 16px; }
+    .result strong { display: block; margin-top: 4px; font-size: 18px; color: var(--teal); }
+    .result.pay strong { color: #ea580c; }
+    .toolbar { padding: 16px; margin-bottom: 16px; }
+    .toolbar-grid { display: grid; gap: 10px; margin-top: 12px; }
+    .field { display: grid; gap: 7px; }
+    label, legend { font-size: 14px; font-weight: 700; color: var(--ink); }
+    input, select, textarea { width: 100%; border: 1px solid var(--line); background: var(--paper-solid); color: var(--ink); border-radius: 8px; padding: 0 12px; min-height: 44px; outline: none; }
+    textarea { min-height: 86px; resize: vertical; padding: 12px; }
+    input:focus, select:focus, textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(15,159,143,.18); }
+    .primary { min-height: 48px; border: 0; border-radius: 8px; background: var(--coral); color: white; padding: 0 18px; font-weight: 800; box-shadow: var(--shadow); }
+    .secondary, .ghost, .danger { min-height: 42px; border-radius: 8px; padding: 0 12px; font-weight: 800; border: 1px solid var(--line); background: var(--paper-solid); color: var(--ink); }
+    .danger { color: var(--danger); border-color: #fecaca; background: #fef2f2; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .segmented { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .segmented button { min-height: 44px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper-solid); color: var(--ink); font-weight: 800; }
+    .segmented button.active { border-color: var(--teal); background: var(--teal); color: white; }
+    .segmented.split button.active { border-color: var(--coral); background: var(--coral); }
+    .list { display: grid; gap: 12px; margin-bottom: 16px; }
+    .expense { padding: 16px; }
+    .expense-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+    .meta { display: flex; gap: 7px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+    .pill { background: var(--blue); color: #1e3a8a; border-radius: 7px; padding: 4px 8px; font-weight: 800; }
+    @media (prefers-color-scheme: dark) { .pill { color: #bfdbfe; } .danger { background: rgba(127, 29, 29, .25); border-color: #7f1d1d; color: #fecaca; } }
+    .expense h3 { margin: 8px 0 0; font-size: 19px; overflow-wrap: anywhere; }
+    .amount-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+    .amount-grid span { display: block; color: var(--muted); font-size: 12px; }
+    .amount-grid strong { display: block; margin-top: 3px; }
+    .memo { margin-top: 12px; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+    .empty { padding: 32px 18px; text-align: center; color: var(--muted); }
+    .empty strong { display: block; color: var(--ink); font-size: 18px; margin-bottom: 6px; }
+    .data { padding: 16px; }
+    .data p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+    .data-actions { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 14px; }
+    .bottom-add { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 10; min-height: 56px; }
+    .modal { position: fixed; inset: 0; z-index: 20; display: none; align-items: flex-end; background: rgba(2, 6, 23, .45); backdrop-filter: blur(8px); }
+    .modal.open { display: flex; }
+    .sheet { width: 100%; max-height: 92vh; overflow: auto; background: var(--paper-solid); border-radius: 8px 8px 0 0; padding: 20px; }
+    .sheet-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+    .sheet h2 { margin: 0; font-size: 22px; }
+    .form-grid { display: grid; gap: 14px; }
+    .share-preview { border: 1px solid var(--line); background: rgba(148, 163, 184, .1); border-radius: 8px; padding: 12px; display: grid; gap: 8px; }
+    .share-preview div { display: flex; justify-content: space-between; gap: 12px; }
+    .error { display: none; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 12px; font-size: 14px; font-weight: 800; }
+    .error.show { display: block; }
+    .hidden { display: none !important; }
+
+    @media (min-width: 720px) {
+      .app { padding: 32px 24px 48px; }
+      .header { flex-direction: row; justify-content: space-between; align-items: center; }
+      .desktop-add { display: inline-flex; align-items: center; }
+      .bottom-add { display: none; }
+      .metrics { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .metric { border-right: 1px solid var(--line); }
+      .metric:last-child { border-right: 0; }
+      .toolbar-grid { grid-template-columns: 1fr 1fr; }
+      .filter-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .amount-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .data-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .modal { align-items: center; justify-content: center; padding: 24px; }
+      .sheet { max-width: 680px; border-radius: 8px; }
+      .form-grid { grid-template-columns: 1fr 1fr; }
+      .full { grid-column: 1 / -1; }
+    }
+    @media (max-width: 719px) { .desktop-add { display: none; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div>
+        <div class="badge">자동 저장 준비 완료</div>
+        <h1>solandjub</h1>
+        <p class="subtitle">둘이 함께 기록하는 지출내역</p>
+      </div>
+      <button class="primary desktop-add" type="button" data-open-form>지출 추가</button>
+    </header>
+
+    <section class="summary card" aria-label="정산 요약">
+      <div class="summary-head">
+        <div class="mark">W</div>
+        <div>
+          <h2>정산 요약</h2>
+          <p>이미 낸 금액과 실제 부담액을 비교했어요.</p>
+        </div>
+      </div>
+      <div class="metrics" id="metrics"></div>
+      <div class="result" id="settlementResult"></div>
+    </section>
+
+    <section class="toolbar card" aria-label="필터와 검색">
+      <strong>필터와 검색</strong>
+      <div class="toolbar-grid">
+        <input id="searchInput" type="search" placeholder="항목명 또는 메모 검색" />
+        <div class="filter-pair">
+          <select id="filterType">
+            <option value="all">전체 보기</option>
+            <option value="date">날짜별 보기</option>
+            <option value="category">카테고리별 보기</option>
+            <option value="payer">결제자별 보기</option>
+          </select>
+          <select id="filterValue" disabled><option value="">전체</option></select>
+        </div>
+      </div>
+    </section>
+
+    <section class="list" id="expenseList" aria-label="지출 목록"></section>
+
+    <section class="data card">
+      <h2 class="section-title">데이터 관리</h2>
+      <p>기록을 백업하거나 다른 기기에서 이어서 쓸 수 있어요.</p>
+      <div class="row" style="margin-top:12px">
+        <button class="secondary" type="button" data-import-mode="append">추가</button>
+        <button class="ghost" type="button" data-import-mode="replace">덮어쓰기</button>
+      </div>
+      <div class="data-actions">
+        <button class="secondary" type="button" id="exportButton">JSON 내보내기</button>
+        <button class="secondary" type="button" id="importButton">JSON 가져오기</button>
+        <button class="danger" type="button" id="resetButton">전체 초기화</button>
+      </div>
+      <input class="hidden" id="importFile" type="file" accept="application/json,.json" />
+      <p id="dataMessage"></p>
+    </section>
+  </main>
+
+  <button class="primary bottom-add" type="button" data-open-form>지출 추가</button>
+
+  <div class="modal" id="formModal" role="dialog" aria-modal="true" aria-labelledby="formTitle">
+    <form class="sheet" id="expenseForm">
+      <div class="sheet-head">
+        <div>
+          <p class="subtitle" id="formMode" style="margin:0;color:var(--coral);font-weight:800">새 지출 추가</p>
+          <h2 id="formTitle">여행 지출을 기록해요</h2>
+        </div>
+        <button class="ghost" type="button" id="closeForm" aria-label="닫기">닫기</button>
+      </div>
+
+      <div class="form-grid">
+        <label class="field">날짜<input id="date" type="date" required /></label>
+        <label class="field">항목명<input id="title" type="text" placeholder="예: 점심, 택시, 호텔" required /></label>
+        <label class="field">카테고리<select id="category"></select></label>
+        <fieldset class="field" style="border:0;padding:0;margin:0">
+          <legend>결제자</legend>
+          <div class="segmented" id="payerButtons"></div>
+        </fieldset>
+        <label class="field">금액<input id="amount" type="number" inputmode="numeric" min="1" step="1" placeholder="0" required /></label>
+        <fieldset class="field" style="border:0;padding:0;margin:0">
+          <legend>분담 방식</legend>
+          <div class="segmented split" id="splitButtons"></div>
+        </fieldset>
+        <div class="field" id="customShares">
+          <label>나의 부담금<input id="myShare" type="number" inputmode="numeric" min="0" step="1" /></label>
+          <label>동행인의 부담금<input id="companionShare" type="number" inputmode="numeric" min="0" step="1" /></label>
+        </div>
+        <label class="field full">메모<textarea id="memo" placeholder="선택 입력"></textarea></label>
+        <div class="share-preview full" id="sharePreview"></div>
+        <p class="error full" id="formError"></p>
+        <button class="primary full" type="submit" id="submitButton">지출 저장</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "solandjub:v1";
+    const participants = { me: "나", companion: "동행인" };
+    const categories = {
+      food: "식비", cafe: "카페/간식", transport: "교통", accommodation: "숙소", tour: "관광/입장료", shopping: "쇼핑", etc: "기타"
+    };
+    const splitLabels = { half: "반반", me: "내가 전액 부담", companion: "동행인이 전액 부담", custom: "직접 입력" };
+    let expenses = [];
+    let editingId = null;
+    let formState = { payer: "me", splitType: "half" };
+    let importMode = "append";
+
+    const $ = (id) => document.getElementById(id);
+    const won = (value) => `${new Intl.NumberFormat("ko-KR").format(Math.round(value || 0))}원`;
+    const today = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    const displayDate = (value) => new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short" }).format(new Date(`${value}T00:00:00`));
+    const toWon = (value) => Math.max(0, Math.round(Number(value) || 0));
+    const id = () => crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const sortNewest = (items) => [...items].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+
+    function calculateShares(amount, splitType, my = 0, companion = 0) {
+      const total = toWon(amount);
+      if (splitType === "me") return { myShare: total, companionShare: 0 };
+      if (splitType === "companion") return { myShare: 0, companionShare: total };
+      if (splitType === "custom") return { myShare: toWon(my), companionShare: toWon(companion) };
+      const myHalf = Math.round(total / 2);
+      return { myShare: myHalf, companionShare: total - myHalf };
+    }
+
+    function calculateSummary() {
+      return expenses.reduce((sum, item) => {
+        sum.total += item.amount;
+        sum.myShare += item.myShare;
+        sum.companionShare += item.companionShare;
+        if (item.payer === "me") sum.myPaid += item.amount;
+        else sum.companionPaid += item.amount;
+        return sum;
+      }, { total: 0, myPaid: 0, companionPaid: 0, myShare: 0, companionShare: 0 });
+    }
+
+    function save() { expenses.length ? localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses)) : localStorage.removeItem(STORAGE_KEY); }
+    function load() {
+      try { expenses = sortNewest(JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]")); }
+      catch { expenses = []; }
+    }
+
+    function renderSummary() {
+      const s = calculateSummary();
+      const metrics = [
+        ["총 지출액", s.total], ["내가 결제", s.myPaid], ["동행인 결제", s.companionPaid], ["내 실제 부담", s.myShare], ["동행인 실제 부담", s.companionShare]
+      ];
+      $("metrics").innerHTML = metrics.map(([label, value]) => `<div class="metric"><span>${label}</span><strong>${won(value)}</strong></div>`).join("");
+      const myBalance = s.myPaid - s.myShare;
+      const amount = Math.abs(Math.round(myBalance));
+      let message = "정산할 금액이 없습니다";
+      let payClass = "";
+      if (amount > 0 && myBalance > 0) { message = `동행인이 나에게 ${won(amount)}을 보내면 정산 완료`; payClass = "pay"; }
+      if (amount > 0 && myBalance < 0) { message = `내가 동행인에게 ${won(amount)}을 보내면 정산 완료`; payClass = "pay"; }
+      $("settlementResult").className = `result ${payClass}`;
+      $("settlementResult").innerHTML = `<div><span class="subtitle">최종 정산 결과</span><strong>${message}</strong></div>`;
+    }
+
+    function renderFilters() {
+      const type = $("filterType").value;
+      const value = $("filterValue");
+      value.innerHTML = "";
+      value.disabled = type === "all";
+      if (type === "all") { value.innerHTML = `<option value="">전체</option>`; return; }
+      if (type === "date") {
+        [...new Set(expenses.map((e) => e.date))].sort((a, b) => b.localeCompare(a)).forEach((date) => value.add(new Option(displayDate(date), date)));
+      }
+      if (type === "category") Object.entries(categories).forEach(([key, label]) => value.add(new Option(label, key)));
+      if (type === "payer") Object.entries(participants).forEach(([key, label]) => value.add(new Option(label, key)));
+    }
+
+    function filteredExpenses() {
+      const type = $("filterType").value;
+      const value = $("filterValue").value;
+      const query = $("searchInput").value.trim().toLowerCase();
+      return sortNewest(expenses.filter((e) => {
+        if (type !== "all" && value && e[type === "payer" ? "payer" : type] !== value) return false;
+        return !query || `${e.title} ${e.memo || ""}`.toLowerCase().includes(query);
+      }));
+    }
+
+    function renderList() {
+      const list = $("expenseList");
+      const items = filteredExpenses();
+      if (expenses.length === 0) {
+        list.innerHTML = `<div class="empty card"><strong>아직 기록한 지출이 없어요</strong>여행 중 생긴 첫 지출을 추가해 보세요.</div>`;
+        return;
+      }
+      if (items.length === 0) {
+        list.innerHTML = `<div class="empty card"><strong>조건에 맞는 지출이 없어요</strong>검색어나 필터를 조금 넓혀 보세요.</div>`;
+        return;
+      }
+      list.innerHTML = items.map((e) => `
+        <article class="expense card">
+          <div class="expense-top">
+            <div>
+              <div class="meta"><span>${displayDate(e.date)}</span><span class="pill">${categories[e.category]}</span></div>
+              <h3>${escapeHtml(e.title)}</h3>
+            </div>
+            <div class="row">
+              <button class="ghost" type="button" data-edit="${e.id}">수정</button>
+              <button class="danger" type="button" data-delete="${e.id}">삭제</button>
+            </div>
+          </div>
+          <div class="amount-grid">
+            <div><span>결제자</span><strong>${participants[e.payer]}</strong></div>
+            <div><span>총액</span><strong>${won(e.amount)}</strong></div>
+            <div><span>내 부담</span><strong style="color:var(--teal)">${won(e.myShare)}</strong></div>
+            <div><span>동행인 부담</span><strong style="color:var(--coral)">${won(e.companionShare)}</strong></div>
+          </div>
+          <div class="memo">분담: ${splitLabels[e.splitType]}${e.memo ? ` · 메모: ${escapeHtml(e.memo)}` : ""}</div>
+        </article>`).join("");
+    }
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>'"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[ch]));
+    }
+
+    function renderAll() { renderSummary(); renderFilters(); renderList(); }
+
+    function setupStaticControls() {
+      $("category").innerHTML = Object.entries(categories).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+      $("payerButtons").innerHTML = Object.entries(participants).map(([k, v]) => `<button type="button" data-payer="${k}">${v}</button>`).join("");
+      $("splitButtons").innerHTML = Object.entries(splitLabels).map(([k, v]) => `<button type="button" data-split="${k}">${v}</button>`).join("");
+    }
+
+    function setButtons() {
+      document.querySelectorAll("[data-payer]").forEach((button) => button.classList.toggle("active", button.dataset.payer === formState.payer));
+      document.querySelectorAll("[data-split]").forEach((button) => button.classList.toggle("active", button.dataset.split === formState.splitType));
+      $("customShares").classList.toggle("hidden", formState.splitType !== "custom");
+      updatePreview();
+    }
+
+    function updatePreview() {
+      const shares = calculateShares($("amount").value, formState.splitType, $("myShare").value, $("companionShare").value);
+      $("sharePreview").innerHTML = `<div><span>나의 부담</span><strong style="color:var(--teal)">${won(shares.myShare)}</strong></div><div><span>동행인의 부담</span><strong style="color:var(--coral)">${won(shares.companionShare)}</strong></div>`;
+      if (formState.splitType !== "custom") {
+        $("myShare").value = shares.myShare || "";
+        $("companionShare").value = shares.companionShare || "";
+      }
+    }
+
+    function openForm(expense) {
+      editingId = expense?.id || null;
+      formState = { payer: expense?.payer || "me", splitType: expense?.splitType || "half" };
+      $("formMode").textContent = expense ? "지출 수정" : "새 지출 추가";
+      $("formTitle").textContent = expense ? "기록을 고쳐볼게요" : "여행 지출을 기록해요";
+      $("submitButton").textContent = expense ? "수정 완료" : "지출 저장";
+      $("date").value = expense?.date || today();
+      $("title").value = expense?.title || "";
+      $("category").value = expense?.category || "food";
+      $("amount").value = expense?.amount || "";
+      $("myShare").value = expense?.myShare || "";
+      $("companionShare").value = expense?.companionShare || "";
+      $("memo").value = expense?.memo || "";
+      $("formError").classList.remove("show");
+      setButtons();
+      $("formModal").classList.add("open");
+    }
+
+    function closeForm() { $("formModal").classList.remove("open"); editingId = null; }
+    function showError(message) { $("formError").textContent = message; $("formError").classList.add("show"); }
+
+    function submitExpense(event) {
+      event.preventDefault();
+      const amount = toWon($("amount").value);
+      const title = $("title").value.trim();
+      const shares = calculateShares(amount, formState.splitType, $("myShare").value, $("companionShare").value);
+      if (!$("date").value) return showError("날짜를 선택해 주세요.");
+      if (!title) return showError("항목명을 입력해 주세요.");
+      if (amount <= 0) return showError("금액은 1원 이상이어야 합니다.");
+      if (formState.splitType === "custom" && shares.myShare + shares.companionShare !== amount) return showError("직접 입력한 부담금 합이 총액과 같아야 합니다.");
+      const now = new Date().toISOString();
+      const next = { id: editingId || id(), date: $("date").value, title, category: $("category").value, payer: formState.payer, amount, splitType: formState.splitType, myShare: shares.myShare, companionShare: shares.companionShare, memo: $("memo").value.trim() || undefined, createdAt: editingId ? expenses.find((e) => e.id === editingId)?.createdAt || now : now, updatedAt: now };
+      expenses = editingId ? expenses.map((e) => e.id === editingId ? next : e) : [next, ...expenses];
+      expenses = sortNewest(expenses);
+      save(); closeForm(); renderAll();
+    }
+
+    function parseImport(text) {
+      const parsed = JSON.parse(text);
+      const incoming = Array.isArray(parsed) ? parsed : parsed.expenses;
+      if (!Array.isArray(incoming)) throw new Error("지출 데이터 형식이 올바르지 않습니다.");
+      return incoming.map((e) => {
+        const amount = toWon(e.amount), myShare = toWon(e.myShare), companionShare = toWon(e.companionShare);
+        if (amount <= 0) throw new Error("0원 이하의 지출은 가져올 수 없습니다.");
+        if (myShare + companionShare !== amount) throw new Error("분담액 합계가 총액과 다릅니다.");
+        return { ...e, id: String(e.id || id()), amount, myShare, companionShare, createdAt: e.createdAt || new Date().toISOString(), updatedAt: e.updatedAt || new Date().toISOString() };
+      });
+    }
+
+    document.addEventListener("click", (event) => {
+      const target = event.target.closest("button");
+      if (!target) return;
+      if (target.matches("[data-open-form]")) openForm();
+      if (target.id === "closeForm") closeForm();
+      if (target.dataset.payer) { formState.payer = target.dataset.payer; setButtons(); }
+      if (target.dataset.split) { formState.splitType = target.dataset.split; setButtons(); }
+      if (target.dataset.edit) openForm(expenses.find((e) => e.id === target.dataset.edit));
+      if (target.dataset.delete && confirm("이 지출을 삭제할까요?")) { expenses = expenses.filter((e) => e.id !== target.dataset.delete); save(); renderAll(); }
+      if (target.dataset.importMode) { importMode = target.dataset.importMode; document.querySelectorAll("[data-import-mode]").forEach((b) => b.className = b.dataset.importMode === importMode ? "secondary" : "ghost"); }
+    });
+
+    ["amount", "myShare", "companionShare"].forEach((key) => $(key).addEventListener("input", updatePreview));
+    $("expenseForm").addEventListener("submit", submitExpense);
+    $("filterType").addEventListener("change", () => { renderFilters(); renderList(); });
+    $("filterValue").addEventListener("change", renderList);
+    $("searchInput").addEventListener("input", renderList);
+    $("exportButton").addEventListener("click", () => {
+      if (expenses.length === 0) { $("dataMessage").textContent = "내보낼 지출 데이터가 없습니다."; return; }
+      const blob = new Blob([JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), expenses }, null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob); link.download = `solandjub-${today()}.json`; link.click(); URL.revokeObjectURL(link.href);
+      $("dataMessage").textContent = "JSON 파일을 내보냈습니다.";
+    });
+    $("importButton").addEventListener("click", () => $("importFile").click());
+    $("importFile").addEventListener("change", async (event) => {
+      const file = event.target.files[0]; if (!file) return;
+      try {
+        const incoming = parseImport(await file.text());
+        if (importMode === "replace" && expenses.length && !confirm("기존 데이터를 가져온 JSON 데이터로 덮어쓸까요?")) return;
+        if (importMode === "replace") expenses = incoming;
+        else {
+          const map = new Map(expenses.map((e) => [e.id, e])); incoming.forEach((e) => map.set(e.id, e)); expenses = [...map.values()];
+        }
+        expenses = sortNewest(expenses); save(); renderAll(); $("dataMessage").textContent = `${incoming.length}개 지출을 가져왔습니다.`;
+      } catch (error) { $("dataMessage").textContent = error.message || "JSON 파일을 가져오지 못했습니다."; }
+      finally { event.target.value = ""; }
+    });
+    $("resetButton").addEventListener("click", () => { if (confirm("전체 지출 데이터를 모두 초기화할까요?")) { expenses = []; save(); renderAll(); $("dataMessage").textContent = "전체 데이터를 초기화했습니다."; } });
+
+    setupStaticControls();
+    load();
+    setButtons();
+    renderAll();
+  </script>
+</body>
+</html>
