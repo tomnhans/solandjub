@@ -155,6 +155,10 @@
       <div class="settings" id="shareSettings">
         <label class="field">내 닉네임<input id="meName" maxlength="16" placeholder="예: 솔" /></label>
         <label class="field">동행인 닉네임<input id="companionName" maxlength="16" placeholder="예: 주브" /></label>
+        <fieldset class="field" style="border:0;padding:0;margin:0">
+          <legend>이 기기 사용자</legend>
+          <div class="segmented" id="deviceButtons"></div>
+        </fieldset>
         <button class="secondary" type="button" id="saveNamesButton">닉네임 저장</button>
         <label class="field">Supabase URL<input id="supabaseUrl" placeholder="https://xxxx.supabase.co" /></label>
         <label class="field">Supabase anon key<input id="supabaseKey" placeholder="ey..." /></label>
@@ -293,10 +297,12 @@ for delete using (true);</div>
     let channel = null;
     let isRemoteReady = false;
     let participantNames = { ...DEFAULT_PARTICIPANTS };
+    let deviceParticipant = "me";
 
     const $ = (id) => document.getElementById(id);
     const storageKey = () => `solandjub:v2:${tripId || "local"}`;
     const namesKey = () => `solandjub:names:${tripId || "local"}`;
+    const identityKey = () => `solandjub:identity:${tripId || "local"}`;
     const won = (value) => `${new Intl.NumberFormat("ko-KR").format(Math.round(value || 0))}원`;
     const today = () => {
       const d = new Date();
@@ -325,6 +331,10 @@ for delete using (true);</div>
       return name || fallback;
     }
 
+    function isParticipant(value) {
+      return value === "me" || value === "companion";
+    }
+
     function loadParticipantNames() {
       const urlNames = {
         me: params.get("meName") || params.get("me"),
@@ -345,6 +355,20 @@ for delete using (true);</div>
       syncNameInputs();
     }
 
+    function loadDeviceParticipant() {
+      const urlIdentity = params.get("as") || params.get("device") || params.get("participant");
+      const savedIdentity = localStorage.getItem(identityKey());
+      deviceParticipant = isParticipant(savedIdentity) ? savedIdentity : "me";
+      if (isParticipant(urlIdentity)) deviceParticipant = urlIdentity;
+      saveDeviceParticipant(deviceParticipant);
+    }
+
+    function saveDeviceParticipant(participant) {
+      deviceParticipant = isParticipant(participant) ? participant : "me";
+      localStorage.setItem(identityKey(), deviceParticipant);
+      syncIdentityControls();
+    }
+
     function saveParticipantNames() {
       participantNames = {
         me: cleanName($("meName")?.value || participantNames.me, DEFAULT_PARTICIPANTS.me),
@@ -359,6 +383,14 @@ for delete using (true);</div>
       if ($("companionName")) $("companionName").value = participantNames.companion;
       if ($("myShareLabel")) $("myShareLabel").textContent = `${participantName("me")} 부담금`;
       if ($("companionShareLabel")) $("companionShareLabel").textContent = `${participantName("companion")} 부담금`;
+      syncIdentityControls();
+    }
+
+    function syncIdentityControls() {
+      document.querySelectorAll("[data-device]").forEach((button) => {
+        button.textContent = participantName(button.dataset.device);
+        button.classList.toggle("active", button.dataset.device === deviceParticipant);
+      });
     }
 
     function participantName(participant) {
@@ -391,9 +423,10 @@ for delete using (true);</div>
 
     function setStatus(text, tone = "local") {
       $("syncStatus").textContent = text;
-      $("topStatus").textContent = tone === "remote" ? "공유 동기화 중" : "이 브라우저에 저장 중";
+      const deviceLabel = `${participantName(deviceParticipant)} 기기`;
+      $("topStatus").textContent = tone === "remote" ? `${deviceLabel} · 공유 중` : `${deviceLabel} · 이 브라우저에 저장 중`;
       $("shareHint").textContent = tripId
-        ? `여행 ID: ${tripId}${isRemoteReady ? " · 같은 링크를 열면 함께 입력됩니다." : " · Supabase 설정을 저장하면 함께 입력됩니다."}`
+        ? `여행 ID: ${tripId} · ${deviceLabel}${isRemoteReady ? " · 같은 링크를 열면 함께 입력됩니다." : " · Supabase 설정을 저장하면 함께 입력됩니다."}`
         : "지금은 이 브라우저에만 저장됩니다.";
     }
 
@@ -532,7 +565,7 @@ for delete using (true);</div>
 
     function renderSummary() {
       const s = calculateSummary();
-      const metrics = [["총 지출액", s.total], [`${subjectName("me")} 결제`, s.myPaid], [`${participantName("companion")} 결제`, s.companionPaid], [`${participantName("me")} 실제 부담`, s.myShare], [`${participantName("companion")} 실제 부담`, s.companionShare]];
+      const metrics = [["총 지출액", s.total], [`${participantName("me")} 결제`, s.myPaid], [`${participantName("companion")} 결제`, s.companionPaid], [`${participantName("me")} 실제 부담`, s.myShare], [`${participantName("companion")} 실제 부담`, s.companionShare]];
       $("metrics").innerHTML = metrics.map(([label, value]) => `<div class="metric"><span>${label}</span><strong>${won(value)}</strong></div>`).join("");
       const myBalance = s.myPaid - s.myShare;
       const amount = Math.abs(Math.round(myBalance));
@@ -615,6 +648,8 @@ for delete using (true);</div>
       $("category").innerHTML = Object.entries(CATEGORIES).map(([key, label]) => `<option value="${key}">${label}</option>`).join("");
       $("payerButtons").innerHTML = participantEntries().map(([key, label]) => `<button type="button" data-payer="${key}">${label}</button>`).join("");
       $("splitButtons").innerHTML = ["half", "me", "companion", "custom"].map((key) => `<button type="button" data-split="${key}">${splitLabel(key)}</button>`).join("");
+      $("deviceButtons").innerHTML = participantEntries().map(([key, label]) => `<button type="button" data-device="${key}">${label}</button>`).join("");
+      syncIdentityControls();
     }
 
     function setButtons() {
@@ -635,7 +670,7 @@ for delete using (true);</div>
 
     function openForm(expense) {
       editingId = expense?.id || null;
-      formState = { payer: expense?.payer || "me", splitType: expense?.splitType || "half" };
+      formState = { payer: expense?.payer || deviceParticipant, splitType: expense?.splitType || "half" };
       $("formMode").textContent = expense ? "지출 수정" : "새 지출 추가";
       $("formTitle").textContent = expense ? "기록을 고쳐볼게요" : "여행 지출을 기록해요";
       $("submitButton").textContent = expense ? "수정 완료" : "지출 저장";
@@ -701,12 +736,15 @@ for delete using (true);</div>
 
     async function newSharedTrip() {
       const currentNames = { ...participantNames };
+      const currentDeviceParticipant = deviceParticipant;
       tripId = makeTripId();
       localStorage.setItem("solandjub:lastTrip", tripId);
       history.replaceState(null, "", `${location.pathname}?trip=${encodeURIComponent(tripId)}`);
       expenses = [];
       participantNames = currentNames;
+      deviceParticipant = currentDeviceParticipant;
       saveParticipantNames();
+      saveDeviceParticipant(deviceParticipant);
       saveLocal();
       renderAll();
       await initRemote();
@@ -725,7 +763,8 @@ for delete using (true);</div>
       const sharedSettings = settings.url && settings.key && !settings.key.startsWith("sb_secret_")
         ? `&supabaseUrl=${encodeURIComponent(settings.url)}&supabaseKey=${encodeURIComponent(settings.key)}`
         : "";
-      const url = `${location.origin}${location.pathname}?trip=${encodeURIComponent(tripId)}&meName=${encodeURIComponent(participantName("me"))}&companionName=${encodeURIComponent(participantName("companion"))}${sharedSettings}`;
+      const inviteAs = deviceParticipant === "me" ? "companion" : "me";
+      const url = `${location.origin}${location.pathname}?trip=${encodeURIComponent(tripId)}&meName=${encodeURIComponent(participantName("me"))}&companionName=${encodeURIComponent(participantName("companion"))}&as=${encodeURIComponent(inviteAs)}${sharedSettings}`;
       try {
         await navigator.clipboard.writeText(url);
         $("dataMessage").textContent = sharedSettings ? "초대 링크를 복사했습니다." : "초대 링크를 복사했습니다. Supabase 설정은 링크에 포함되지 않았습니다.";
@@ -748,6 +787,13 @@ for delete using (true);</div>
         setButtons();
         renderAll();
         $("dataMessage").textContent = "닉네임을 저장했습니다.";
+      }
+      if (target.dataset.device) {
+        saveDeviceParticipant(target.dataset.device);
+        formState.payer = deviceParticipant;
+        setButtons();
+        renderAll();
+        $("dataMessage").textContent = `${participantName(deviceParticipant)} 기기로 설정했습니다.`;
       }
       if (target.id === "saveSupabaseButton") {
         const key = $("supabaseKey").value.trim();
@@ -810,6 +856,7 @@ for delete using (true);</div>
     });
 
     loadParticipantNames();
+    loadDeviceParticipant();
     loadLocal();
     setupStaticControls();
     setButtons();
